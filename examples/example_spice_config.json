@@ -1,0 +1,20 @@
+{
+	// this VM has no networking capabilities
+	// all omitted properties will be stripped from the QEMU command
+	// memory and disks are the only absolutely necessary properties
+
+	// suffixes: K, M, G
+	"memory": "4G",
+
+	"disks": [
+		"./hdd1.qcow2",
+	],
+
+	"display": {
+		// sdl, gtk, spice, vnc or none
+		"mode": "spice",
+
+		// use OpenGL with display
+		"gl": false
+	}
+}

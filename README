@@ -11,6 +11,7 @@ COMMANDS
 	start
 	help
 	stop
+	command print QEMU command from JSON config file
 	ls      list active or inactive VMs
 	locate  print configuration directory
 	monitor connect to a VM's QEMU monitor
