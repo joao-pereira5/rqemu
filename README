@@ -3,6 +3,7 @@ NAME
 
 SYNOPSIS
 	rqemu <command> [<sub command>...]
+	rqemu help <command>
 
 COMMANDS
 	ls - list active VMs
@@ -12,6 +13,7 @@ COMMANDS
 	start
 	help
 	stop
+	locate - print configuration directory
 	monitor - connect to a VM's QEMU monitor
 	spice - connect to a VM's SPICE server
 
