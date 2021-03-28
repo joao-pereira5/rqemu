@@ -34,20 +34,20 @@ SYNOPSIS
 	rqemu help <command>
 
 COMMANDS
-	ls - list active VMs
-	lsall - list all VMs (active or inactive)
 	create
 	edit
 	start
 	help
 	stop
-	locate - print configuration directory
-	monitor - connect to a VM's QEMU monitor
-	spice - connect to a VM's SPICE server`
+	ls      list active or inactive VMs
+	locate  print configuration directory
+	monitor connect to a VM's QEMU monitor
+	spice   connect to a VM's SPICE server`
 
 	fmt.Println(msg)
 }
 
+// set the directory to place/read all RQEMU files
 func SetHomeDirectory() {
 	home = os.Getenv(evarHome)
 	if len(home) > 0 {

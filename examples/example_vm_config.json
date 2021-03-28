@@ -1,0 +1,65 @@
+{
+	"name": "debian10-example",
+
+	// suffixes: K, M, G
+	"memory": "4G",
+
+	// = 0 -> use all cores available
+	// > 0 -> use a limited number of cores
+	"cores": 0,
+
+	"display": {
+		// sdl, gtk, spice, vnc or none
+		"mode": "sdl",
+
+		// use OpenGL with display
+		"gl": true
+	},
+
+	// virtio or default
+	"rng": "virtio",
+
+	// use virtio memory balloon?
+	"balloon": true,
+
+	// audio might be choppy because of core count
+	"audio": true,
+
+	// mapped filesystems from host to guest
+	// use the following command on the guest VM to mount:
+	// mount -t 9p mount1 <whatever directory you want>
+	"mount": [
+		{
+		 	"host": "/mnt/vm1",
+		 	"tag": "mount1"
+		}
+	],
+
+	"net": {
+		// // bridged, nat or none
+		// "mode": "nat",
+
+		// // list ports to map
+		// // guest_port -to-> host_port
+		// "map": [
+		// 	{
+		// 		"guest": 22,
+		// 		"host": 10022
+		// 	},
+		// 	{
+		// 		"guest": 8080,
+		// 		"host": 10023
+		// 	}
+		// ]
+
+		// bridged, nat or none
+		"mode": "bridged",
+
+		"bridge": "br0",
+
+		"tap": [
+			"tap0",
+			"tap1"
+		]
+	}
+}
