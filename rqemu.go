@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"strconv"
 	"strings"
-	"regexp"
 	"encoding/json"
 )
 
@@ -67,23 +66,29 @@ const evarXdgConfigHome = "XDG_CONFIG_HOME"
 // "command" command
 type PortMap struct {
 	Guest int `json:"guest"`
-	Host int  `json:"host"`
+	Host  int `json:"host"`
 }
 
 type Net struct {
-	Mode string       `json:"mode"`
+	Mode    string    `json:"mode"`
 	PortMap []PortMap `json:"map"`
-	Tap []string      `json:"tap"`
+	Tap     []string  `json:"tap"`
 }
 
 type Mount struct {
 	Host string `json:"host"`
-	Tag string  `json:"tag"`
+	Tag  string `json:"tag"`
 }
 
 type Display struct {
-	Mode string `json:"mode"`
-	Gl bool     `json:"gl"`
+	Mode  string `json:"mode"`
+	Gl    bool   `json:"gl"`
+	Audio bool   `json:"audio"`
+}
+
+type Virtio struct {
+	Rng     string   `json:"rng"`
+	Balloon bool     `json:"balloon"`
 }
 
 type Vm struct {
@@ -91,9 +96,7 @@ type Vm struct {
 	Cores   int      `json:"cores"`
 	Disks   []string `json:"disks"`
 	Display Display  `json:"display"`
-	Rng     string   `json:"rng"`
-	Balloon bool     `json:"balloon"`
-	Audio   bool     `json:"audio"`
+	Virtio  Virtio   `json:"virtio"`
 	Mount   []Mount  `json:"mount"`
 	Net     Net      `json:"net"`
 }
@@ -124,14 +127,9 @@ func Command(vmName string) string {
 		PrintErr(errBytes)
 		os.Exit(1)
 	}
-	jsonString := string(bytes)
+	jsonBytes := bytes
 	defer configJson.Close()
 
-	re := regexp.MustCompile(`.*//.*\n`)
-	jsonString = re.ReplaceAllString(jsonString, "")
-	//fmt.Println(jsonString)
-
-	jsonBytes := []byte(jsonString)
 	errUnmarshal := json.Unmarshal(jsonBytes, &vmJson)
 	if errUnmarshal != nil {
 		PrintErr(errUnmarshal)
@@ -195,17 +193,16 @@ func Command(vmName string) string {
 		command += "\t-display none" + lb
 	}
 
-	// virtio
-	if vmJson.Rng == "virtio" {
-		command += "\t-object rng-random,id=rng0,filename=\"/dev/urandom\" -device virtio-rng-pci,rng=rng0" + lb
-	}
-	if vmJson.Balloon {
-		command += "\t-device virtio-balloon" + lb
+	if vmJson.Display.Audio {
+		command += "\t-device intel-hda -device hda-duplex" + lb
 	}
 
-	// audio
-	if vmJson.Audio {
-		command += "\t-device intel-hda -device hda-duplex" + lb
+	// virtio
+	if vmJson.Virtio.Rng == "virtio" {
+		command += "\t-object rng-random,id=rng0,filename=\"/dev/urandom\" -device virtio-rng-pci,rng=rng0" + lb
+	}
+	if vmJson.Virtio.Balloon {
+		command += "\t-device virtio-balloon" + lb
 	}
 
 	// shared folders
@@ -327,7 +324,14 @@ USAGE
 
 EXAMPLE
 	$ rqemu command debian10-example
-	qemu-system-x86_64 -cpu host -enable-kvm -name "win10" -m 6G -smp 2 -nic none -display none -drive file="win10.qcow2",media=disk -monitor unix:"./tmp/win_mon.sock",server,nowait`
+	qemu-system-x86_64 -cpu host -enable-kvm \
+		-name "debian10-example" \
+		-m 6G \
+		-smp 2 \
+		-nic none \
+		-display none \
+		-drive file="debian10-example.qcow2",media=disk \
+		-monitor unix:"./tmp/debian10-example.mon.sock",server,nowait`
 
 	default:
 		Help()
