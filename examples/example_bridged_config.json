@@ -1,0 +1,17 @@
+{
+	"memory": "400M",
+
+	"disks": [
+		"./hdd1.qcow2"
+	],
+
+	"net": {
+		"mode": "bridged",
+
+		"tap": [
+			"tap0",
+			"tap1",
+			"someothertapinterface"
+		]
+	}
+}

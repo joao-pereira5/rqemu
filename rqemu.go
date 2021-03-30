@@ -32,14 +32,33 @@ func DoesFileExist(path string) bool {
 	return false
 }
 
-func GetNumberOfCores() int {
-	out, err := exec.Command("nproc").Output()
+func Exec(command string) string {
+	com := strings.Split(command, " ")
+
+	// find command in $PATH
+	path, errPath := exec.LookPath(com[0])
+	if errPath != nil {
+		PrintErr(errPath)
+		os.Exit(1)
+	}
+
+	cmd := &exec.Cmd {
+		Path: path,
+		Args: com,
+		Stderr: os.Stdout,
+	}
+
+	out, err := cmd.Output()
 	if err != nil {
 		PrintErr(err)
 		os.Exit(1)
 	}
+	return string(out)
+}
 
-	res, atoiErr := strconv.Atoi(strings.Split(string(out), "\n")[0])
+func GetNumberOfCores() int {
+	out := Exec("nproc")
+	res, atoiErr := strconv.Atoi(strings.Split(out, "\n")[0])
 	if atoiErr != nil {
 		PrintErr(atoiErr)
 		os.Exit(1)
@@ -102,7 +121,7 @@ type Vm struct {
 }
 
 // build a QEMU shell command from the VM JSON config file
-func Command(vmName string) string {
+func Command(vmName string, breakLinesAfterArgs bool) string {
 	configFile := home + "/" + vmName + ".json"
 
 	if !DoesFileExist(configFile) {
@@ -140,27 +159,32 @@ func Command(vmName string) string {
 		PrintErr("JSON: '.memory' field is required.")
 		os.Exit(1)
 	}
-	if len(vmJson.Disks) < 1 {
-		PrintErr("JSON: '.disks' field is required.")
-		os.Exit(1)
-	}
 
 	// build command
 	var command string
-	lb := " \\\n"
+
+	var lb string
+	var li string
+	if breakLinesAfterArgs {
+		lb = " \\\n"
+		li = "\t"
+	} else {
+		lb = " "
+		li = ""
+	}
 
 	command = "qemu-system-x86_64 -cpu host -enable-kvm -daemonize" + lb
-	command += "\t-name \"" + vmName + "\"" + lb
+	command += li + "-name " + vmName + "" + lb
 
 	// resources
-	command += "\t-m \"" + vmJson.Memory + "\"" + lb
+	command += li + "-m " + vmJson.Memory + "" + lb
 
 	var coreCount int
 	coreCount = vmJson.Cores
 	if vmJson.Cores <= 0 {
 		coreCount = GetNumberOfCores()
 	}
-	command += "\t-smp " + IntToString(coreCount) + lb
+	command += li + "-smp " + IntToString(coreCount) + lb
 
 	// display
 	isGlOn := vmJson.Display.Gl
@@ -168,66 +192,66 @@ func Command(vmName string) string {
 	switch vmJson.Display.Mode {
 	case "sdl":
 		if isGlOn {
-			command += "\t-device virtio-vga,virgl=on -display sdl,gl=on,show-cursor=off" + lb
+			command += li + "-device virtio-vga,virgl=on -display sdl,gl=on,show-cursor=off" + lb
 		} else {
-			command += "\t-display sdl,show-cursor=off" + lb
+			command += li + "-display sdl,show-cursor=off" + lb
 		}
 	case "gtk":
 		if isGlOn {
-			command += "\t-device virtio-vga,virgl=on -display gtk,gl=on,show-cursor=off" + lb
+			command += li + "-device virtio-vga,virgl=on -display gtk,gl=on,show-cursor=off" + lb
 		} else {
-			command += "\t-display gtk,show-cursor=off" + lb
+			command += li + "-display gtk,show-cursor=off" + lb
 		}
 	case "spice":
-		command += "\t-vga qxl -spice unix,addr=\"" +
+		command += li + "-vga qxl -spice unix,addr=" +
 		tmp +
 		"/" +
 		vmName +
 		spiceSocketSuffix +
-		"\",disable-ticketing -device virtio-serial -chardev spicevmc,id=vdagent,name=vdagent -device virtserialport,chardev=vdagent,name=com.redhat.spice.0" +
+		",disable-ticketing -device virtio-serial -chardev spicevmc,id=vdagent,name=vdagent -device virtserialport,chardev=vdagent,name=com.redhat.spice.0" +
 		lb
 	case "vnc":
 		// perhaps, multiple VMs might attempt to use the same VNC port?
-		command += "\t-vga vnc :0" + lb
+		command += li + "-vga vnc :0" + lb
 	default:
-		command += "\t-display none" + lb
+		command += li + "-display none" + lb
 	}
 
 	if vmJson.Display.Audio {
-		command += "\t-device intel-hda -device hda-duplex" + lb
+		command += li + "-device intel-hda -device hda-duplex" + lb
 	}
 
 	// virtio
 	if vmJson.Virtio.Rng == "virtio" {
-		command += "\t-object rng-random,id=rng0,filename=\"/dev/urandom\" -device virtio-rng-pci,rng=rng0" + lb
+		command += li + "-object rng-random,id=rng0,filename=/dev/urandom -device virtio-rng-pci,rng=rng0" + lb
 	}
 	if vmJson.Virtio.Balloon {
-		command += "\t-device virtio-balloon" + lb
+		command += li + "-device virtio-balloon" + lb
 	}
 
 	// shared folders
 	for i := 0; i < len(vmJson.Mount); i++ {
 		fs := vmJson.Mount[i]
-		command += "\t-virtfs local,path=\"" +
+		command += li + "-virtfs local,path=" +
 		fs.Host +
-		"\",mount_tag=\"" +
+		",mount_tag=" +
 		fs.Tag +
-		"\",security_model=mapped-xattr" +
+		",security_model=mapped-xattr" +
 		lb
 	}
 
 	// disks
 	for i := 0; i < len(vmJson.Disks); i++ {
-		command += "\t-drive file=\"" +
+		command += li + "-drive file=" +
 			vmJson.Disks[i] +
-			"\",media=disk" +
+			",media=disk" +
 			lb
 	}
 
 	// network
 	switch vmJson.Net.Mode {
 	case "nat":
-		command += "\t-net user"
+		command += li + "-net user"
 		// port mapping
 		for i := 0; i < len(vmJson.Net.PortMap); i++ {
 			mapping := vmJson.Net.PortMap[i]
@@ -242,7 +266,8 @@ func Command(vmName string) string {
 		for i := 0; i < len(vmJson.Net.Tap); i++ {
 			tapInt := vmJson.Net.Tap[i]
 			idx := IntToString(i)
-			command += "\t-device virtio-net,netdev=n" +
+			command += li +
+				"-device virtio-net,netdev=n" +
 				idx +
 				" -netdev tap,id=n" +
 				idx +
@@ -252,15 +277,16 @@ func Command(vmName string) string {
 				lb
 		}
 	default:
-		command += "\t-nic none" + lb
+		command += li + "-nic none" + lb
 	}
 
-	command += "\t-monitor unix:\"" +
+	command += li +
+		"-monitor unix:" +
 		tmp +
 		"/" +
 		vmName +
 		monSocketSuffix +
-		"\",server,nowait"
+		",server,nowait"
 
 	return command
 }
@@ -268,32 +294,11 @@ func Command(vmName string) string {
 
 //
 // "help" command
-func Help() {
-	msg := `NAME
-	rqemu - interactive command line QEMU user interface
-
-USAGE
-	rqemu <command> [<sub command>...]
-	rqemu help <command>
-
-COMMANDS
-	create
-	edit
-	start
-	help
-	stop
-	command print QEMU command from JSON config file
-	ls      list active or inactive VMs
-	locate  print configuration directory
-	monitor connect to a VM's QEMU monitor
-	spice   connect to a VM's SPICE server`
-
-	fmt.Println(msg)
-}
-
 func HelpCommand(comName string) {
 	var msg string
+
 	switch comName {
+
 	case "locate":
 		msg = `NAME
 	locate - print configuration directory
@@ -334,8 +339,25 @@ EXAMPLE
 		-monitor unix:"./tmp/debian10-example.mon.sock",server,nowait`
 
 	default:
-		Help()
-		return
+		msg = `NAME
+	rqemu - interactive command line QEMU user interface
+
+USAGE
+	rqemu <command> [<sub command>...]
+	rqemu help <command>
+
+COMMANDS
+	create
+	edit
+	start
+	help
+	stop
+	command print QEMU command from JSON config file
+	ls      list active or inactive VMs
+	locate  print configuration directory
+	monitor connect to a VM's QEMU monitor
+	spice   connect to a VM's SPICE server`
+
 	}
 	fmt.Println(msg)
 }
@@ -385,6 +407,10 @@ func SetHomeDirectory() {
 	home = dirName
 }
 
+func Help() {
+	HelpCommand("")
+}
+
 func main() {
 	args := os.Args[1:]
 	if len(args) < 1 {
@@ -397,6 +423,7 @@ func main() {
 
 	os.MkdirAll(home, os.ModePerm)
 	os.MkdirAll(tmp, os.ModePerm)
+	os.Chdir(home)
 
 	switch args[0] {
 	case "help":
@@ -415,7 +442,18 @@ func main() {
 			os.Exit(1)
 			return
 		}
-		fmt.Println(Command(args[1]))
+		command := Command(args[1], true)
+		fmt.Println(command)
+
+	case "start":
+		if len(args) < 2 || len(args[1]) <= 0 {
+			HelpCommand(args[0])
+			os.Exit(1)
+			return
+		}
+		command := Command(args[1], false)
+		Exec(command)
+		fmt.Println("'" + args[1] + "' VM started.")
 
 	default:
 		PrintErr("No such command '" + args[0] + "'")

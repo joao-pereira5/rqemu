@@ -1,0 +1,22 @@
+{
+	"memory": "1G",
+
+	"disks": [
+		"./hdd1.qcow2"
+	],
+
+	"net": {
+		"mode": "nat",
+
+		"map": [
+			{
+				"guest": 22,
+				"host": 10022
+			},
+			{
+				"guest": 80,
+				"host": 10023
+			}
+		]
+	}
+}
