@@ -338,6 +338,26 @@ EXAMPLE
 		-drive file="debian10-example.qcow2",media=disk \
 		-monitor unix:"./tmp/debian10-example.mon.sock",server,nowait`
 
+	case "start":
+		msg = `NAME
+	start - start VM
+
+USAGE
+	rqemu start <vm name>
+
+EXAMPLE
+	$ rqemu start debian10-example`
+
+	case "cdrom":
+		msg = `NAME
+	cdrom - start VM booting from an ISO file
+
+USAGE
+	rqemu cdrom <vm name> <iso location>
+
+EXAMPLE
+	$ rqemu cdrom debian10-example /mnt/isos/debian_install.iso`
+
 	default:
 		msg = `NAME
 	rqemu - interactive command line QEMU user interface
@@ -350,6 +370,7 @@ COMMANDS
 	create
 	edit
 	start
+	cdrom   start VM booting from an ISO file
 	help
 	stop
 	command print QEMU command from JSON config file
@@ -454,6 +475,18 @@ func main() {
 		command := Command(args[1], false)
 		Exec(command)
 		fmt.Println("'" + args[1] + "' VM started.")
+
+	case "cdrom":
+		if len(args) < 3 || len(args[1]) <= 0 {
+			HelpCommand(args[0])
+			os.Exit(1)
+			return
+		}
+		command := Command(args[1], false)
+		command += " -cdrom " + args[2]
+		command += " -boot d"
+		Exec(command)
+		fmt.Println("'" + args[1] + "' VM started with CDROM + '" + args[2] + "'.")
 
 	default:
 		PrintErr("No such command '" + args[0] + "'")

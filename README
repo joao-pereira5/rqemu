@@ -9,6 +9,7 @@ COMMANDS
 	create
 	edit
 	start
+	cdrom   start VM booting from an ISO file
 	help
 	stop
 	command print QEMU command from JSON config file
