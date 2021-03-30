@@ -56,6 +56,37 @@ func Exec(command string) string {
 	return string(out)
 }
 
+func GetVmPids(vmName string) []int {
+	cmd := "pgrep 'qemu' -al | grep -uE '\\-name " + vmName + "' | cut -d' ' -f1"
+	command := exec.Command("sh", "-c", cmd)
+	command.Stderr = os.Stdout
+	out, err := command.Output()
+	if err != nil {
+		PrintErr(err)
+		os.Exit(1)
+	}
+
+	fmt.Println(string(out))
+	pidsStr := strings.Split(string(out), "\n")
+
+	var pidsInt []int
+	for i := 0; i < len(pidsStr); i++ {
+		var pid int
+		if len(pidsStr[i]) < 1 {
+			continue
+		}
+
+		pid, err = strconv.Atoi(pidsStr[i])
+		if err != nil {
+			PrintErr(err)
+			os.Exit(1)
+		}
+
+		pidsInt = append(pidsInt, pid)
+	}
+	return pidsInt
+}
+
 func GetNumberOfCores() int {
 	out := Exec("nproc")
 	res, atoiErr := strconv.Atoi(strings.Split(out, "\n")[0])
@@ -293,6 +324,22 @@ func Command(vmName string, breakLinesAfterArgs bool) string {
 
 
 //
+// "spice" command
+func OpenSpiceViewer(vmName string) {
+	spiceSocket := tmp + "/" + vmName + spiceSocketSuffix
+
+	if !DoesFileExist(spiceSocket) {
+		PrintErr("'" + vmName + "' does not have an available SPICE server.")
+		os.Exit(1)
+	}
+
+	uri := "spice+unix://" + spiceSocket
+	Exec("remote-viewer " + uri)
+}
+
+
+
+//
 // "help" command
 func HelpCommand(comName string) {
 	var msg string
@@ -337,6 +384,26 @@ EXAMPLE
 		-display none \
 		-drive file="debian10-example.qcow2",media=disk \
 		-monitor unix:"./tmp/debian10-example.mon.sock",server,nowait`
+
+	case "spice":
+		msg = `NAME
+	spice - connect to a VM's SPICE server
+
+USAGE
+	rqemu spice <vm name>
+
+EXAMPLE
+	$ rqemu spice debian10-example`
+
+	case "stop":
+		msg = `NAME
+	start - stop an active VM
+
+USAGE
+	rqemu stop <vm name>
+
+EXAMPLE
+	$ rqemu stop debian10-example`
 
 	case "start":
 		msg = `NAME
@@ -466,6 +533,14 @@ func main() {
 		command := Command(args[1], true)
 		fmt.Println(command)
 
+	case "spice":
+		if len(args) < 2 || len(args[1]) <= 0 {
+			HelpCommand(args[0])
+			os.Exit(1)
+			return
+		}
+		OpenSpiceViewer(args[1])
+
 	case "start":
 		if len(args) < 2 || len(args[1]) <= 0 {
 			HelpCommand(args[0])
@@ -475,6 +550,34 @@ func main() {
 		command := Command(args[1], false)
 		Exec(command)
 		fmt.Println("'" + args[1] + "' VM started.")
+
+		if strings.Contains(command, "-spice") {
+			OpenSpiceViewer(args[1])
+		}
+
+	case "stop":
+		if len(args) < 2 || len(args[1]) <= 0 {
+			HelpCommand(args[0])
+			os.Exit(1)
+			return
+		}
+
+		pids := GetVmPids(args[1])
+		if len(pids) < 1 {
+			PrintErr("'" + args[1] + "' VM, not active.")
+			os.Exit(1)
+		}
+
+		for i := 0; i < len(pids); i++ {
+			pid := pids[i]
+			proc, err := os.FindProcess(pid)
+
+			if err != nil {
+				PrintErr(err)
+			}
+			proc.Kill()
+		}
+		fmt.Println("Destroyed '" + args[1] + "' VM.")
 
 	case "cdrom":
 		if len(args) < 3 || len(args[1]) <= 0 {
@@ -487,6 +590,10 @@ func main() {
 		command += " -boot d"
 		Exec(command)
 		fmt.Println("'" + args[1] + "' VM started with CDROM + '" + args[2] + "'.")
+
+		if strings.Contains(command, "-spice") {
+			OpenSpiceViewer(args[1])
+		}
 
 	default:
 		PrintErr("No such command '" + args[0] + "'")
