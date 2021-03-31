@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"strconv"
 	"strings"
+	"regexp"
 	"encoding/json"
 )
 
@@ -56,8 +57,37 @@ func Exec(command string) string {
 	return string(out)
 }
 
+func ListActiveVms() []string {
+	cmd := "pgrep 'qemu' -al | grep -ouE '\\-name .*' | sort | awk '{print $2}' | uniq"
+	command := exec.Command("sh", "-c", cmd)
+	command.Stderr = os.Stdout
+
+	out, err := command.Output()
+	if err != nil {
+		PrintErr(err)
+		os.Exit(1)
+	}
+
+	prefixRegex, _ := regexp.Compile(".*=")
+	suffixRegex, _ := regexp.Compile(",.*")
+
+	vms := strings.Split(string(out), "\n")
+	var res []string
+	for i := 0; i < len(vms); i++ {
+		if len(vms[i]) < 1 {
+			continue
+		}
+
+		// libvirt VMs have name of format -name guest=<name>,<options>
+		vmName := suffixRegex.ReplaceAllString(vms[i], "")
+		vmName = prefixRegex.ReplaceAllString(vmName, "")
+		res = append(res, vmName)
+	}
+	return res
+}
+
 func GetVmPids(vmName string) []int {
-	cmd := "pgrep 'qemu' -al | grep -uE '\\-name " + vmName + "' | cut -d' ' -f1"
+	cmd := "pgrep 'qemu' -al | grep -uE '\\-name (guest=|)" + vmName + "( |,)' | cut -d' ' -f1 | uniq"
 	command := exec.Command("sh", "-c", cmd)
 	command.Stderr = os.Stdout
 	out, err := command.Output()
@@ -66,9 +96,7 @@ func GetVmPids(vmName string) []int {
 		os.Exit(1)
 	}
 
-	fmt.Println(string(out))
 	pidsStr := strings.Split(string(out), "\n")
-
 	var pidsInt []int
 	for i := 0; i < len(pidsStr); i++ {
 		var pid int
@@ -293,6 +321,11 @@ func Command(vmName string, breakLinesAfterArgs bool) string {
 		}
 		command += " -net nic" + lb
 	case "bridged":
+		if len(vmJson.Net.Tap) < 1 {
+			PrintErr("Bridged network mode selected, but no TAP interfaces specified. Disabling network.")
+			command += li + "-nic none" + lb
+		}
+
 		// attach virtual interfaces
 		for i := 0; i < len(vmJson.Net.Tap); i++ {
 			tapInt := vmJson.Net.Tap[i]
@@ -434,12 +467,12 @@ USAGE
 	rqemu help <command>
 
 COMMANDS
-	create
-	edit
-	start
+	create  create a new VM
+	edit    edit the configuration of a VM
+	start   start VM
 	cdrom   start VM booting from an ISO file
-	help
-	stop
+	help    print command details
+	stop    kill an active VM
 	command print QEMU command from JSON config file
 	ls      list active or inactive VMs
 	locate  print configuration directory
@@ -449,6 +482,12 @@ COMMANDS
 	}
 	fmt.Println(msg)
 }
+
+func Help() {
+	HelpCommand("")
+}
+
+
 
 // set the directory to place/read all RQEMU files
 func SetHomeDirectory() {
@@ -493,10 +532,6 @@ func SetHomeDirectory() {
 		evarXdgRuntimeDir + ", " +
 		evarXdgConfigHome + " or even HOME env variables, using PWD.")
 	home = dirName
-}
-
-func Help() {
-	HelpCommand("")
 }
 
 func main() {
@@ -593,6 +628,12 @@ func main() {
 
 		if strings.Contains(command, "-spice") {
 			OpenSpiceViewer(args[1])
+		}
+
+	case "ls":
+		vms := ListActiveVms()
+		for i := 0; i < len(vms); i++ {
+			fmt.Println(vms[i])
 		}
 
 	default:

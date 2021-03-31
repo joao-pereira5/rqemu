@@ -5,27 +5,18 @@ SYNOPSIS
 	rqemu <command> [<sub command>...]
 	rqemu help <command>
 
+ENVIRONMENT VARIABLES
+	RQEMU_HOME - the active directory of rqemu (fallback to XDG directories or HOME)
+
 COMMANDS
-	create
-	edit
-	start
+	create  create a new VM
+	edit    edit the configuration of a VM
+	start   start VM
 	cdrom   start VM booting from an ISO file
-	help
-	stop
+	help    print command details
+	stop    kill an active VM
 	command print QEMU command from JSON config file
 	ls      list active or inactive VMs
 	locate  print configuration directory
 	monitor connect to a VM's QEMU monitor
 	spice   connect to a VM's SPICE server
-
-FEATURES ([-] TODO, [+] DONE)
-	[-] Start and stop VMs;
-	[-] List active VMs;
-	[-] Connect to a VM's SPICE server;
-	[-] Connect to a VM's QEMU monitor;
-	[-] Create and edit VMs (interactive process);
-	[-] Store VM configurations in JSON format;
-	[-] Print the full QEMU shell command of a VM JSON configuration file;
-	[-] Manage virtual networks (bridges and taps);
-	[-] Configure virtual networks autostart (systemd-networkd files, or shell scripts).
-
