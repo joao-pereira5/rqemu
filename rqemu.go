@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"strconv"
 	"strings"
-	"regexp"
 	"encoding/json"
 )
 
@@ -68,9 +67,6 @@ func ListActiveVms() []string {
 		os.Exit(1)
 	}
 
-	prefixRegex, _ := regexp.Compile(".*=")
-	suffixRegex, _ := regexp.Compile(",.*")
-
 	vms := strings.Split(string(out), "\n")
 	var res []string
 	for i := 0; i < len(vms); i++ {
@@ -78,16 +74,13 @@ func ListActiveVms() []string {
 			continue
 		}
 
-		// libvirt VMs have name of format -name guest=<name>,<options>
-		vmName := suffixRegex.ReplaceAllString(vms[i], "")
-		vmName = prefixRegex.ReplaceAllString(vmName, "")
-		res = append(res, vmName)
+		res = append(res, vms[i])
 	}
 	return res
 }
 
 func GetVmPids(vmName string) []int {
-	cmd := "pgrep 'qemu' -al | grep -uE '\\-name (guest=|)" + vmName + "( |,)' | cut -d' ' -f1 | uniq"
+	cmd := "pgrep 'qemu' -al | grep -uE '\\-name " + vmName + "' | cut -d' ' -f1 | uniq"
 	command := exec.Command("sh", "-c", cmd)
 	command.Stderr = os.Stdout
 	out, err := command.Output()
@@ -243,6 +236,7 @@ func Command(vmName string, breakLinesAfterArgs bool) string {
 	if vmJson.Cores <= 0 {
 		coreCount = GetNumberOfCores()
 	}
+
 	command += li + "-smp " + IntToString(coreCount) + lb
 
 	// display
@@ -262,12 +256,19 @@ func Command(vmName string, breakLinesAfterArgs bool) string {
 			command += li + "-display gtk,show-cursor=off" + lb
 		}
 	case "spice":
+		glOption := ""
+		if isGlOn {
+			glOption = ",gl=on"
+		}
+
 		command += li + "-vga qxl -spice unix,addr=" +
 		tmp +
 		"/" +
 		vmName +
 		spiceSocketSuffix +
-		",disable-ticketing -device virtio-serial -chardev spicevmc,id=vdagent,name=vdagent -device virtserialport,chardev=vdagent,name=com.redhat.spice.0" +
+		",disable-ticketing" +
+		glOption +
+		" -device virtio-serial -chardev spicevmc,id=vdagent,name=vdagent -device virtserialport,chardev=vdagent,name=com.redhat.spice.0" +
 		lb
 	case "vnc":
 		// perhaps, multiple VMs might attempt to use the same VNC port?
@@ -612,6 +613,10 @@ func main() {
 			}
 			proc.Kill()
 		}
+
+		// remove monitor and spice files
+		os.Remove(tmp + "/" + args[1] + monSocketSuffix)
+		os.Remove(tmp + "/" + args[1] + spiceSocketSuffix)
 		fmt.Println("Destroyed '" + args[1] + "' VM.")
 
 	case "cdrom":
