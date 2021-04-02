@@ -146,11 +146,6 @@ type Net struct {
 	Tap     []string  `json:"tap"`
 }
 
-type Mount struct {
-	Host string `json:"host"`
-	Tag  string `json:"tag"`
-}
-
 type Display struct {
 	Mode  string `json:"mode"`
 	Gl    bool   `json:"gl"`
@@ -168,7 +163,7 @@ type Vm struct {
 	Disks   []string `json:"disks"`
 	Display Display  `json:"display"`
 	Virtio  Virtio   `json:"virtio"`
-	Mount   []Mount  `json:"mount"`
+	Mount   []string `json:"mount"`
 	Net     Net      `json:"net"`
 }
 
@@ -290,12 +285,14 @@ func Command(vmName string, breakLinesAfterArgs bool) string {
 	}
 
 	// shared folders
+	mountTagPrefix := "virtfs"
 	for i := 0; i < len(vmJson.Mount); i++ {
 		fs := vmJson.Mount[i]
 		command += li + "-virtfs local,path=" +
-		fs.Host +
+		fs +
 		",mount_tag=" +
-		fs.Tag +
+		mountTagPrefix +
+		IntToString(i) +
 		",security_model=mapped-xattr" +
 		lb
 	}
