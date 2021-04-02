@@ -429,6 +429,16 @@ USAGE
 EXAMPLE
 	$ rqemu spice debian10-example`
 
+	case "monitor":
+		msg = `NAME
+	monitor - connect to a VM's monitor server
+
+USAGE
+	rqemu monitor <vm name>
+
+EXAMPLE
+	$ rqemu spice debian10-example`
+
 	case "stop":
 		msg = `NAME
 	start - stop an active VM
@@ -628,6 +638,10 @@ func main() {
 		command := Command(args[1], false)
 		command += " -cdrom " + args[2]
 		command += " -boot d"
+
+		// provide a graphical window, for setup
+		command = strings.Replace(command, "-display none", "-display gtk,show-cursor=off", -1)
+
 		Exec(command)
 		fmt.Println("'" + args[1] + "' VM started with CDROM + '" + args[2] + "'.")
 
@@ -640,6 +654,18 @@ func main() {
 		for i := 0; i < len(vms); i++ {
 			fmt.Println(vms[i])
 		}
+
+	case "monitor":
+		if len(args) < 2 || len(args[1]) <= 0 {
+			HelpCommand(args[0])
+			os.Exit(1)
+			return
+		}
+
+		monFile := args[1] + monSocketSuffix
+
+		// find a way to spawn nc without a GUI crutch
+		Exec("xterm -e nc -U " + tmp + "/" + monFile)
 
 	default:
 		PrintErr("No such command '" + args[0] + "'")
