@@ -5,6 +5,8 @@ import (
 	"os"
 	"os/exec"
 	"io/ioutil"
+	"math/rand"
+	"time"
 	"strconv"
 	"strings"
 	"encoding/json"
@@ -18,6 +20,10 @@ func PrintErr(m interface{}) {
 
 func IntToString(i int) string {
 	return fmt.Sprintf("%d", i)
+}
+
+func IntToHex(i int) string {
+	return fmt.Sprintf("%02x", i % 255)
 }
 
 func DoesFileExist(path string) bool {
@@ -240,13 +246,13 @@ func Command(vmName string, breakLinesAfterArgs bool) string {
 	switch vmJson.Display.Mode {
 	case "sdl":
 		if isGlOn {
-			command += li + "-device virtio-vga,virgl=on -display sdl,gl=on,show-cursor=off" + lb
+			command += li + "-device virtio-vga,virgl=on -display sdl,gl=on,show-cursor=on" + lb
 		} else {
 			command += li + "-display sdl,show-cursor=off" + lb
 		}
 	case "gtk":
 		if isGlOn {
-			command += li + "-device virtio-vga,virgl=on -display gtk,gl=on,show-cursor=off" + lb
+			command += li + "-device virtio-vga,virgl=on -display gtk,gl=on,show-cursor=on" + lb
 		} else {
 			command += li + "-display gtk,show-cursor=off" + lb
 		}
@@ -324,6 +330,18 @@ func Command(vmName string, breakLinesAfterArgs bool) string {
 			command += li + "-nic none" + lb
 		}
 
+		rand.Seed(time.Now().UnixNano())
+		macPrefix := IntToHex(rand.Int()) +
+			":" +
+			IntToHex(rand.Int()) +
+			":" +
+			IntToHex(rand.Int()) +
+			":" +
+			IntToHex(rand.Int()) +
+			":" +
+			IntToHex(rand.Int()) +
+			":"
+
 		// attach virtual interfaces
 		for i := 0; i < len(vmJson.Net.Tap); i++ {
 			tapInt := vmJson.Net.Tap[i]
@@ -331,6 +349,9 @@ func Command(vmName string, breakLinesAfterArgs bool) string {
 			command += li +
 				"-device virtio-net,netdev=n" +
 				idx +
+				",mac=" +
+				macPrefix +
+				IntToHex(i) +
 				" -netdev tap,id=n" +
 				idx +
 				",ifname=" +
