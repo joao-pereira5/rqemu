@@ -331,12 +331,7 @@ func Command(vmName string, breakLinesAfterArgs bool) string {
 		}
 
 		rand.Seed(time.Now().UnixNano())
-		macPrefix := IntToHex(rand.Int()) +
-			":" +
-			IntToHex(rand.Int()) +
-			":" +
-			IntToHex(rand.Int()) +
-			":" +
+		macPrefix := "22:d0:46:" +
 			IntToHex(rand.Int()) +
 			":" +
 			IntToHex(rand.Int()) +
