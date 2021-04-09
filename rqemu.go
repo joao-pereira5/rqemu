@@ -610,10 +610,6 @@ func main() {
 		Exec(command)
 		fmt.Println("'" + args[1] + "' VM started.")
 
-		if strings.Contains(command, "-spice") {
-			OpenSpiceViewer(args[1])
-		}
-
 	case "stop":
 		if len(args) < 2 || len(args[1]) <= 0 {
 			HelpCommand(args[0])
