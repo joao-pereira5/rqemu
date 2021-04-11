@@ -1,0 +1,52 @@
+#!/bin/sh
+
+set -e
+
+cd "$(rqemu locate)"
+
+help() {
+	cat <<EOF
+USAGE
+	dmenu_rqemu <command>
+COMMANDS
+	help
+	start
+	stop
+	spice
+EOF
+}
+
+notification_title="RQEMU"
+
+case "$1" in
+start|"")
+	choice="$(find . -maxdepth 1 -name '*.json' | sed 's;\.json;;g' | sed 's;^\.\/;;g' | dmenu -p "Start VM" -l 20)"
+
+	if [ -n "$choice" ]; then
+		notify-send "$notification_title" "$(rqemu start "$choice")"
+	fi
+;;
+stop)
+	choice="$(rqemu ls | dmenu -p "Stop VM" -l 20)"
+
+	if [ -n "$choice" ]; then
+		notify-send "$notification_title" "$(rqemu stop "$choice")"
+	fi
+;;
+spice)
+	choice="$(rqemu ls | dmenu -p "Connect to SPICE server" -l 20)"
+
+	if [ -n "$choice" ]; then
+		notify-send "$notification_title" "$(rqemu spice "$choice")"
+	fi
+;;
+help)
+	help
+;;
+*)
+	printf "Command not found '%s'\n" "$1"
+	help
+	exit 1
+;;
+esac
+

@@ -1,6 +1,9 @@
 NAME
 	rqemu - interactive command line QEMU user interface
 
+BUILD
+	go build rqemu.go
+
 SYNOPSIS
 	rqemu <command> [<sub command>...]
 	rqemu help <command>
