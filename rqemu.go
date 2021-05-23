@@ -262,12 +262,12 @@ func Command(vmName string, breakLinesAfterArgs bool) string {
 			glOption = ",gl=on"
 		}
 
-		command += li + "-vga qxl -spice unix,addr=" +
+		command += li + "-vga qxl -spice addr=" +
 		tmp +
 		"/" +
 		vmName +
 		spiceSocketSuffix +
-		",disable-ticketing" +
+		",disable-ticketing=on,unix=on" +
 		glOption +
 		" -device virtio-serial -chardev spicevmc,id=vdagent,name=vdagent -device virtserialport,chardev=vdagent,name=com.redhat.spice.0" +
 		lb
