@@ -180,7 +180,7 @@ func main() {
 
 		monFile := args[1] + monSocketSuffix
 
-		// find a way to spawn nc without a GUI crutch
+		// this is only compatible with OpenBSD's netcat
 		Run("nc -U " + tmp + "/" + monFile)
 
 	default:
